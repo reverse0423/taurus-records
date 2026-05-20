@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>충북대 타우루스 기록 프로그램</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <h1>충북대 타우루스 기록 프로그램</h1>
+        <span id="gameStateText">1회초 · 우리 공격 · 0아웃</span>
+      </div>
+
+      <div class="game-meta">
+        <label>우리팀 <input id="teamName" value="충북대 타우루스" readonly></label>
+        <label>날짜 <input id="gameDate" type="date"></label>
+        <label>상대팀 <input id="opponent" placeholder="상대팀"></label>
+        <label>구장 <input id="stadium" placeholder="구장"></label>
+      </div>
+
+      <div class="scoreboard">
+        <div class="score-cell">
+          <span>타우루스</span>
+          <input id="ourScore" type="number" min="0" value="0">
+        </div>
+        <div class="score-cell">
+          <span>상대</span>
+          <input id="opponentScore" type="number" min="0" value="0">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="saveGameBtn">저장</button>
+        <button class="btn neutral" id="loadPlayersBtn">선수명단 불러오기</button>
+        <button class="btn neutral" id="loadJsonBtn">JSON 불러오기</button>
+        <button class="btn neutral" id="exportJsonBtn">JSON 내보내기</button>
+        <button class="btn success" id="exportDetailJsonBtn">detail.json 내보내기</button>
+        <button class="btn neutral" id="previewDetailBtn">detail 미리보기</button>
+        <button class="btn neutral" id="validateGameBtn">기록 검증</button>
+        <button class="btn success" id="exportCsvBtn">CSV 내보내기</button>
+        <button class="btn danger" id="resetBtn">초기화</button>
+        <input id="playersFileInput" type="file" accept="application/json,.json" hidden>
+        <input id="jsonFileInput" type="file" accept="application/json,.json" hidden>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="기록 탭">
+      <button class="tab active" data-tab="our">우리 팀 기록</button>
+      <button class="tab" data-tab="opponent">상대 팀 기록</button>
+      <button class="tab" data-tab="pitchers">투수 기록</button>
+      <button class="tab" data-tab="games">경기 목록</button>
+      <button class="tab" data-tab="career">통산 성적</button>
+      <button class="tab" data-tab="orders">타순별 성적</button>
+    </nav>
+
+    <main>
+      <section class="panel active" id="tab-our">
+        <div class="live-board">
+          <div class="live-now">
+            <span>현재 타자</span>
+            <strong id="currentOurBatter">1번 우리선수1</strong>
+            <em>상대 투수: <select id="opponentPitcherSelect"></select></em>
+          </div>
+          <div class="live-options">
+            <label>득점 <input id="ourRunsScored" type="number" min="0" max="4" value="0"></label>
+            <label>타점 <input id="ourRbiAdded" type="number" min="0" max="4" value="0"></label>
+            <label>아웃 <input id="ourOutsOnPlay" type="number" min="0" max="3" value="0"></label>
+            <label>투구수 <input id="ourPitchCount" type="number" min="0" value="0"></label>
+            <label class="check-label"><input id="ourBatterScored" type="checkbox"> 타자 득점</label>
+            <label class="check-label"><input id="ourEarnedRun" type="checkbox" checked> 자책점</label>
+          </div>
+          <div class="count-panel">
+            <strong id="ourCountText">B 0 · S 0</strong>
+            <button class="count-btn ball" data-pitch="ball" data-side="our">볼</button>
+            <button class="count-btn strike" data-pitch="strike" data-side="our">스트라이크</button>
+            <button class="count-btn foul" data-pitch="foul" data-side="our">파울</button>
+            <button class="count-btn reset" data-pitch="reset" data-side="our">카운트 리셋</button>
+          </div>
+          <div class="result-buttons" id="ourResultButtons"></div>
+          <button class="btn neutral" id="undoOurEventBtn">마지막 입력 취소</button>
+        </div>
+
+        <div class="utility-grid">
+          <section class="tool-panel">
+            <h3>주자 상황</h3>
+            <div class="base-inputs">
+              <label>1루 <input id="runner1" list="playerList" placeholder="주자명"></label>
+              <label>2루 <input id="runner2" list="playerList" placeholder="주자명"></label>
+              <label>3루 <input id="runner3" list="playerList" placeholder="주자명"></label>
+            </div>
+            <div class="tool-actions">
+              <button class="btn neutral small" id="applyRunnersBtn">주자 반영</button>
+              <button class="btn danger small" id="clearRunnersBtn">주자 비우기</button>
+              <button class="btn success small" id="saveLineupBtn">라인업 저장</button>
+              <button class="btn neutral small" id="loadLineupBtn">라인업 불러오기</button>
+            </div>
+          </section>
+
+          <section class="tool-panel">
+            <h3>이닝별 스코어</h3>
+            <div class="mini-table-wrap">
+              <table id="inningsTable" class="mini-table"></table>
+            </div>
+            <button class="btn neutral small" id="addInningBtn">이닝 추가</button>
+          </section>
+
+          <section class="tool-panel wide">
+            <h3>상세 기록 문구</h3>
+            <textarea id="playsEditor" rows="5" placeholder="예: 1 top 이정민 좌안 (도루, 득점)"></textarea>
+            <div class="tool-actions">
+              <button class="btn neutral small" id="applyPlaysBtn">문구 반영</button>
+            </div>
+          </section>
+
+          <section class="tool-panel wide">
+            <h3>검증 / detail 미리보기</h3>
+            <div id="validationBox" class="validation-box">기록 검증 버튼을 누르면 점검 결과가 표시됩니다.</div>
+            <textarea id="detailPreview" rows="5" readonly placeholder="detail 미리보기가 여기에 표시됩니다."></textarea>
+          </section>
+        </div>
+
+        <div class="panel-head">
+          <h2>우리 팀 타자 기록</h2>
+          <div class="panel-actions">
+            <button class="btn success" id="addOurStarterBtn">선수 추가</button>
+            <button class="btn warning" id="addOurSubBtn">교체 선수 추가</button>
+            <button class="btn success" id="addOpponentPitcherBtn">상대 투수 추가</button>
+          </div>
+        </div>
+        <datalist id="playerList"></datalist>
+        <div class="table-wrap">
+          <table id="ourBattersTable" class="record-table"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="tab-opponent">
+        <div class="live-board">
+          <div class="live-now">
+            <span>현재 상대 타자</span>
+            <strong id="currentOpponentBatter">1번</strong>
+            <em>우리 투수: <select id="ourPitcherSelect"></select></em>
+          </div>
+          <div class="live-options">
+            <label>상대 득점 <input id="oppRunsScored" type="number" min="0" max="4" value="0"></label>
+            <label>타점 <input id="oppRbiAdded" type="number" min="0" max="4" value="0"></label>
+            <label>아웃 <input id="oppOutsOnPlay" type="number" min="0" max="3" value="0"></label>
+            <label>투구수 <input id="oppPitchCount" type="number" min="0" value="0"></label>
+            <label class="check-label"><input id="oppBatterScored" type="checkbox"> 타자 득점</label>
+            <label class="check-label"><input id="oppEarnedRun" type="checkbox" checked> 자책점</label>
+          </div>
+          <div class="count-panel">
+            <strong id="oppCountText">B 0 · S 0</strong>
+            <button class="count-btn ball" data-pitch="ball" data-side="opponent">볼</button>
+            <button class="count-btn strike" data-pitch="strike" data-side="opponent">스트라이크</button>
+            <button class="count-btn foul" data-pitch="foul" data-side="opponent">파울</button>
+            <button class="count-btn reset" data-pitch="reset" data-side="opponent">카운트 리셋</button>
+          </div>
+          <div class="result-buttons" id="opponentResultButtons"></div>
+          <button class="btn neutral" id="undoOpponentEventBtn">마지막 입력 취소</button>
+        </div>
+
+        <div class="panel-head">
+          <h2>상대 팀 타자 기록</h2>
+          <div class="panel-actions">
+            <button class="btn success" id="addOppStarterBtn">선수 추가</button>
+            <button class="btn warning" id="addOppSubBtn">교체 선수 추가</button>
+            <button class="btn success" id="addPitcherBtn">우리 투수 추가</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="opponentBattersTable" class="record-table"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="tab-pitchers">
+        <div class="panel-head">
+          <h2>투수 기록</h2>
+          <div class="panel-actions">
+            <button class="btn success" id="addPitcherBtn2">우리 투수 추가</button>
+            <button class="btn success" id="addOpponentPitcherBtn2">상대 투수 추가</button>
+          </div>
+        </div>
+        <h3>우리 팀 투수</h3>
+        <div class="table-wrap short">
+          <table id="pitchersTable" class="record-table"></table>
+        </div>
+        <h3>상대 팀 투수</h3>
+        <div class="table-wrap short">
+          <table id="opponentPitchersTable" class="record-table"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="tab-games">
+        <div class="panel-head">
+          <h2>저장된 경기 목록</h2>
+          <span class="hint">저장된 경기는 이 브라우저의 localStorage에 누적됩니다.</span>
+        </div>
+        <div class="table-wrap">
+          <table id="gamesTable" class="record-table"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="tab-career">
+        <div class="panel-head stacked">
+          <h2>통산 성적</h2>
+          <div class="filters">
+            <label>선수명 검색 <input id="careerNameFilter" placeholder="선수명"></label>
+            <label>상대팀 필터 <input id="careerOpponentFilter" placeholder="상대팀"></label>
+            <label>구장 필터 <input id="careerStadiumFilter" placeholder="구장"></label>
+          </div>
+        </div>
+        <h3>타자 통산</h3>
+        <div class="table-wrap short">
+          <table id="careerBattersTable" class="record-table"></table>
+        </div>
+        <h3>우리 투수 통산</h3>
+        <div class="table-wrap short">
+          <table id="careerPitchersTable" class="record-table"></table>
+        </div>
+      </section>
+
+      <section class="panel" id="tab-orders">
+        <div class="panel-head stacked">
+          <h2>타순별 성적</h2>
+          <div class="filters">
+            <label>타순
+              <select id="orderFilter">
+                <option>전체 타순</option>
+                <option value="1">1번타자</option>
+                <option value="2">2번타자</option>
+                <option value="3">3번타자</option>
+                <option value="4">4번타자</option>
+                <option value="5">5번타자</option>
+                <option value="6">6번타자</option>
+                <option value="7">7번타자</option>
+                <option value="8">8번타자</option>
+                <option value="9">9번타자</option>
+              </select>
+            </label>
+            <label>선수명 검색 <input id="orderNameFilter" placeholder="선수명"></label>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="orderStatsTable" class="record-table"></table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
